@@ -8,3 +8,4 @@ pip install datasets \
     trl
 pip install -U numpy pandas
 pip install wandb clearml
+pip install black

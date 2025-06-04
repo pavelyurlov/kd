@@ -2,7 +2,10 @@ import argparse
 import yaml
 from datetime import datetime
 
-from utils import *
+from utils.config import Config
+from utils.data import get_data
+from utils.inference import get_model_and_tokenizer, generate_teacher_outputs
+from utils.training import train
 
 
 def get_args() -> Config:

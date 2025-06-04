@@ -1,59 +1,12 @@
-from datasets import Dataset, load_dataset
+from datasets import load_dataset
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from tqdm import tqdm
-
-import pandas as pd
 import json
-import torch
 
+from utils.inference import generate_text_from_samples
 
 BATCH_SIZE = 16
 STEP = 100
-
-
-@torch.inference_mode
-def generate_text_from_samples(
-    model: AutoModelForCausalLM,
-    tokenizer: AutoTokenizer,
-    samples: dict,
-    max_new_tokens: int = 256,
-):
-    msgs_batch = samples["messages"]
-
-    text_inputs = [
-        tokenizer.apply_chat_template(
-            msgs[:1], tokenize=False, add_generation_prompt=True
-        )
-        for msgs in msgs_batch
-    ]
-
-    model_inputs = tokenizer(
-        text=text_inputs,
-        return_tensors="pt",
-        padding=True,
-        truncation=True,
-        padding_side="left",
-    ).to(model.device)
-
-    generated_ids = model.generate(
-        **model_inputs,
-        max_new_tokens=max_new_tokens,
-        # do_sample=False,
-        # num_beams=1,
-    )
-
-    trimmed_generated_ids = [
-        out_ids[len(in_ids) :]
-        for in_ids, out_ids in zip(model_inputs.input_ids, generated_ids)
-    ]
-
-    output_texts = tokenizer.batch_decode(
-        trimmed_generated_ids,
-        skip_special_tokens=True,
-        clean_up_tokenization_spaces=False,
-    )
-
-    return output_texts
 
 
 def main():

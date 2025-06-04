@@ -78,7 +78,7 @@ def generate_teacher_outputs(
         msgs = sample["messages"]
         for msg in msgs:
             if msg["role"] == ROLE_ASSISTANT:
-                msg["role"] = teacher_answers[idx]
+                msg["content"] = teacher_answers[idx]
         return sample
 
     teacher_dataset = dataset.map(replace_targets, with_indices=True)

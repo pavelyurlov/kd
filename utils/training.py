@@ -15,6 +15,7 @@ def train(
     eval_dataset: Dataset,
     config: Config,
     timestamp: str,
+    teacher_metrics: dict,
 ):
 
     training_args = SFTConfig(
@@ -49,5 +50,7 @@ def train(
             tokenizer, eval_pred, config.data.language
         ),
     )
+
+    trainer.log(teacher_metrics)
 
     trainer.train()

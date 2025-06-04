@@ -6,6 +6,7 @@ from utils.config import Config
 from utils.data import get_data
 from utils.inference import get_model_and_tokenizer, generate_teacher_outputs
 from utils.training import train
+from utils.validation import metrics_between_sets
 
 
 def get_args() -> Config:
@@ -32,6 +33,14 @@ def main(config: Config):
         teacher_model, teacher_tokenizer, train_dataset, config.train.inference_batch
     )
 
+    eval_teacher = generate_teacher_outputs(
+        teacher_model, teacher_tokenizer, eval_dataset, config.train.inference_batch
+    )
+    teacher_metrics = metrics_between_sets(
+        eval_teacher, eval_dataset, config.data.language
+    )
+    teacher_metrics = {f"eval_teacher_{k}": v for k, v in teacher_metrics.items()}
+
     train(
         student_model,
         student_tokenizer,
@@ -39,6 +48,7 @@ def main(config: Config):
         eval_dataset,
         config,
         timestamp,
+        teacher_metrics,
     )
 
 

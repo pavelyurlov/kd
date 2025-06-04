@@ -1,4 +1,6 @@
 import argparse
+import yaml
+from utils import *
 
 from datetime import datetime
 from tqdm import tqdm
@@ -18,25 +20,16 @@ ROLE_BOT = "bot"
 ROLE_ASSISTANT = "assistant"
 
 
-def get_args():
+def get_args() -> Config:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model", type=str, default="qwen", choices=["qwen", "llama"])
-    parser.add_argument("--data", type=str, default="real", choices=["dummy", "real"])
-    parser.add_argument("--epochs", type=int, default=1)
-    parser.add_argument("--batch", type=int, default=512)
+    parser.add_argument("--config", type=str, default="configs/config.yaml")
     args = parser.parse_args()
 
-    model_name: str = args.model
-    data_name: str = args.data
-    n_epochs: int = args.epochs
-    batch_size: int = args.batch
+    with open(args.config) as f:
+        config_dict = yaml.safe_load(f)
+    config = Config(**config_dict)
 
-    return dict(
-        model_name=model_name,
-        data_name=data_name,
-        n_epochs=n_epochs,
-        batch_size=batch_size,
-    )
+    return config
 
 
 def dummy_data():
@@ -66,9 +59,8 @@ def dummy_data():
     return train_dataset, eval_dataset
 
 
-def saiga_data():
-    dataset_name = "IlyaGusev/saiga_scored"
-    dataset: Dataset = load_dataset(dataset_name, split="train")
+def hf_data(config: DataConfig):
+    dataset: Dataset = load_dataset(config.name, split="train")
     dataset = dataset.filter(
         lambda x: x["source"] == "gpt4"
         and not x["is_bad_by_regex"]
@@ -86,36 +78,21 @@ def saiga_data():
 
     dataset = dataset.map(rename_role)
 
-    train_dataset = dataset.filter(lambda _, idx: idx % 10 == 0, with_indices=True)
-    eval_dataset = dataset.filter(lambda _, idx: idx % 30 == 1, with_indices=True)
+    dataset = dataset.filter(lambda _, idx: idx % config.filter == 0, with_indices=True)
+
+    train_dataset = dataset.filter(lambda _, idx: idx % 5 > 0, with_indices=True)
+    eval_dataset = dataset.filter(lambda _, idx: idx % 5 == 0, with_indices=True)
 
     print(len(train_dataset), len(eval_dataset))
 
     return train_dataset, eval_dataset
 
 
-def get_data(name: str):
-    if name == "dummy":
+def get_data(config: DataConfig):
+    if config.dummy:
         return dummy_data()
-    elif name == "real":
-        return saiga_data()
     else:
-        raise NotImplementedError(name)
-
-
-def model_names(name: str):
-    if name == "llama":
-        student_name = "unsloth/Llama-3.2-1B-Instruct"
-        teacher_name = "unsloth/Llama-3.2-3B-Instruct"
-
-    elif name == "qwen":
-        student_name = "Qwen/Qwen2-0.5B-Instruct"
-        teacher_name = "Qwen/Qwen2-1.5B-Instruct"
-
-    else:
-        raise NotImplementedError(name)
-
-    return student_name, teacher_name
+        return hf_data(config)
 
 
 def generate_teacher_outputs(
@@ -146,27 +123,21 @@ def generate_teacher_outputs(
 #     model: AutoModelForCausalLM, tokenizer: AutoTokenizer, dataset: Dataset
 # ):
 
-def main(
-    model_name: str = "qwen",
-    data_name: str = "dummy",
-    n_epochs: int = 1,
-    batch_size: int = 512,
-):
+def main(config: Config):
     timestamp = datetime.now().strftime("%d.%m.%y_%H.%M.%S")
 
-    student_name, teacher_name = model_names(model_name)
-    train_dataset, eval_dataset = get_data(data_name)
+    train_dataset, eval_dataset = get_data(config.data)
 
-    tokenizer = AutoTokenizer.from_pretrained(student_name)
+    tokenizer = AutoTokenizer.from_pretrained(config.models.teacher)
     student_model = AutoModelForCausalLM.from_pretrained(
-        student_name, torch_dtype="bfloat16", device_map="auto"
+        config.models.student, torch_dtype="bfloat16", device_map="auto"
     )
     teacher_model = AutoModelForCausalLM.from_pretrained(
-        teacher_name, torch_dtype="bfloat16", device_map="auto"
+        config.models.teacher, torch_dtype="bfloat16", device_map="auto"
     )
 
     teacher_dataset = generate_teacher_outputs(
-        teacher_model, tokenizer, train_dataset, batch_size
+        teacher_model, tokenizer, train_dataset, config.train.inference_batch
     )
 
     training_args = SFTConfig(
@@ -176,7 +147,7 @@ def main(
         push_to_hub=False,
         report_to=["wandb"],
         # Training params
-        num_train_epochs=n_epochs,
+        num_train_epochs=config.train.epochs,
         per_device_train_batch_size=1,
         gradient_accumulation_steps=8,
         learning_rate=2e-4,
@@ -203,7 +174,7 @@ def main(
 
 
 if __name__ == "__main__":
-    args = get_args()
-    print(args)
+    config = get_args()
+    print(config)
 
-    main(**args)
+    main(config)

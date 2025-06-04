@@ -1,0 +1,12 @@
+models:
+  student: unsloth/Llama-3.2-1B-Instruct
+  teacher: Qwen/Qwen2-1.5B-Instruct
+data:
+  name: IlyaGusev/saiga_scored
+  filter: 10
+train:
+  epochs: 3
+  inference_batch: 256
+
+# Llama-3.2: 1B, 3B
+# Qwen2: 0.5B, 1.5B, 7B

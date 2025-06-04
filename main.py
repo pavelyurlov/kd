@@ -8,6 +8,9 @@ import torch
 from trl import SFTTrainer, SFTConfig
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
+from teacher_pred import generate_text_from_samples
+
+
 # from peft import LoraConfig
 
 
@@ -20,13 +23,20 @@ def get_args():
     parser.add_argument("--model", type=str, default="qwen", choices=["qwen", "llama"])
     parser.add_argument("--data", type=str, default="real", choices=["dummy", "real"])
     parser.add_argument("--epochs", type=int, default=1)
+    parser.add_argument("--batch", type=int, default=512)
     args = parser.parse_args()
 
     model_name: str = args.model
     data_name: str = args.data
     n_epochs: int = args.epochs
+    batch_size: int = args.batch
 
-    return dict(model_name=model_name, data_name=data_name, n_epochs=n_epochs)
+    return dict(
+        model_name=model_name,
+        data_name=data_name,
+        n_epochs=n_epochs,
+        batch_size=batch_size,
+    )
 
 
 def dummy_data():
@@ -76,8 +86,8 @@ def saiga_data():
 
     dataset = dataset.map(rename_role)
 
-    train_dataset = dataset.filter(lambda _, idx: idx % 100 == 0, with_indices=True)
-    eval_dataset = dataset.filter(lambda _, idx: idx % 300 == 1, with_indices=True)
+    train_dataset = dataset.filter(lambda _, idx: idx % 10 == 0, with_indices=True)
+    eval_dataset = dataset.filter(lambda _, idx: idx % 30 == 1, with_indices=True)
 
     print(len(train_dataset), len(eval_dataset))
 
@@ -108,48 +118,18 @@ def model_names(name: str):
     return student_name, teacher_name
 
 
-def generate_text_from_sample(
+def generate_teacher_outputs(
     model: AutoModelForCausalLM,
     tokenizer: AutoTokenizer,
-    sample: dict,
-    max_new_tokens: int = 256,
-):
-    msgs = sample["messages"]
-
-    text_input = tokenizer.apply_chat_template(
-        msgs[:1], tokenize=False, add_generation_prompt=True
-    )
-    model_inputs = tokenizer(
-        text=[text_input],
-        return_tensors="pt",
-        padding=True,
-        truncation=True,
-        padding_side="left",
-    ).to(model.device)
-
-    generated_ids = model.generate(**model_inputs, max_new_tokens=max_new_tokens)
-
-    trimmed_generated_ids = [
-        out_ids[len(in_ids) :]
-        for in_ids, out_ids in zip(model_inputs.input_ids, generated_ids)
-    ]
-    output_text = tokenizer.batch_decode(
-        trimmed_generated_ids,
-        skip_special_tokens=True,
-        clean_up_tokenization_spaces=False,
-    )
-
-    return output_text[0]
-
-
-@torch.inference_mode
-def generate_teacher_outputs(
-    model: AutoModelForCausalLM, tokenizer: AutoTokenizer, dataset: Dataset
+    dataset: Dataset,
+    batch_size: int,
 ) -> Dataset:
     teacher_answers: list[str] = []
-    for sample in tqdm(dataset, desc="Teacher output generation"):
-        output = generate_text_from_sample(model, tokenizer, sample)
-        teacher_answers.append(output)
+    idx_range = range(0, len(dataset), batch_size)
+    for i in tqdm(idx_range, desc="Teacher output generation"):
+        samples = dataset[i : i + batch_size]
+        outputs = generate_text_from_samples(model, tokenizer, samples)
+        teacher_answers.extend(outputs)
 
     def replace_targets(sample: dict, idx: int):
         msgs = sample["messages"]
@@ -165,10 +145,13 @@ def generate_teacher_outputs(
 # def hard_response_distillation(
 #     model: AutoModelForCausalLM, tokenizer: AutoTokenizer, dataset: Dataset
 # ):
-#     pass
 
-
-def main(model_name: str = "qwen", data_name: str = "dummy", n_epochs: int = 1):
+def main(
+    model_name: str = "qwen",
+    data_name: str = "dummy",
+    n_epochs: int = 1,
+    batch_size: int = 512,
+):
     timestamp = datetime.now().strftime("%d.%m.%y_%H.%M.%S")
 
     student_name, teacher_name = model_names(model_name)
@@ -182,7 +165,9 @@ def main(model_name: str = "qwen", data_name: str = "dummy", n_epochs: int = 1):
         teacher_name, torch_dtype="bfloat16", device_map="auto"
     )
 
-    teacher_dataset = generate_teacher_outputs(teacher_model, tokenizer, train_dataset)
+    teacher_dataset = generate_teacher_outputs(
+        teacher_model, tokenizer, train_dataset, batch_size
+    )
 
     training_args = SFTConfig(
         # Save results

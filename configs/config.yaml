@@ -3,7 +3,7 @@ models:
   teacher: Qwen/Qwen2-1.5B-Instruct
 data:
   name: IlyaGusev/saiga_scored
-  filter: 10
+  language: ru
 train:
   epochs: 3
   inference_batch: 256

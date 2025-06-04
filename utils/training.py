@@ -1,7 +1,9 @@
-from .config import Config
 from trl import SFTConfig, SFTTrainer
 from datasets import Dataset
 from transformers import AutoModelForCausalLM, AutoTokenizer
+
+from .config import Config
+from .validation import calculate_metrics
 
 # from peft import LoraConfig
 
@@ -31,6 +33,7 @@ def train(
         max_seq_length=1024,
         # Eval & checkpoiting
         per_device_eval_batch_size=1,
+        eval_accumulation_steps=8,
         eval_strategy="epoch",
         eval_on_start=True,
         save_strategy="epoch",
@@ -42,6 +45,9 @@ def train(
         args=training_args,
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
+        compute_metrics=lambda eval_pred: calculate_metrics(
+            tokenizer, eval_pred, config.data.language
+        ),
     )
 
     trainer.train()

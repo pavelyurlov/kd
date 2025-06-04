@@ -5,7 +5,8 @@ pip install datasets \
     accelerate \
     sentencepiece \
     peft \
-    trl
+    trl \
+    evaluate rouge-score bert-score
 pip install -U numpy pandas
 pip install wandb clearml
 pip install black

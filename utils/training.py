@@ -18,7 +18,6 @@ def train(
     training_args = SFTConfig(
         # Save results
         output_dir=f"output/sft_{timestamp}",
-        logging_dir=f"logs/sft_{timestamp}",
         push_to_hub=False,
         report_to=["wandb"],
         # Training params

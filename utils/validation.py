@@ -69,5 +69,6 @@ def calculate_metrics(
     )
 
     results = calculate_metrics_on_text(decoded_preds, decoded_refs, language)
+    results = {f"student_{k}": v for k, v in results.items()}
 
     return results

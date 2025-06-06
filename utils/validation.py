@@ -1,6 +1,7 @@
 import evaluate
 import numpy as np
 
+import torch
 from datasets import Dataset
 from transformers import AutoTokenizer
 from transformers.trainer_utils import EvalPrediction
@@ -52,18 +53,22 @@ def metrics_between_sets(
     return calculate_metrics_on_text(predictions, references, language)
 
 
+def preprocess_logits(logits: torch.Tensor, labels: torch.Tensor):
+    return logits.argmax(dim=-1)
+
+
 def calculate_metrics(
     tokenizer: AutoTokenizer, eval_pred: EvalPrediction, language: str
 ) -> dict[str, float]:
     results = {}
     predictions, references = eval_pred
 
-    pred_ids = predictions.argmax(axis=-1) if predictions.ndim == 3 else predictions
+    pred_ids = np.where(predictions == -100, tokenizer.pad_token_id, predictions)
+    ref_ids = np.where(references == -100, tokenizer.pad_token_id, references)
+
     decoded_preds = tokenizer.batch_decode(
         pred_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False
     )
-
-    ref_ids = np.where(references == -100, tokenizer.pad_token_id, references)
     decoded_refs = tokenizer.batch_decode(
         ref_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False
     )

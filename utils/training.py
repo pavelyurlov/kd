@@ -3,7 +3,7 @@ from datasets import Dataset
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from .config import Config
-from .validation import calculate_metrics
+from .validation import calculate_metrics, preprocess_logits
 
 # from peft import LoraConfig
 
@@ -46,6 +46,7 @@ def train(
         args=training_args,
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
+        preprocess_logits_for_metrics=preprocess_logits,
         compute_metrics=lambda eval_pred: calculate_metrics(
             tokenizer, eval_pred, config.data.language
         ),

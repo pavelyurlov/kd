@@ -10,3 +10,4 @@ pip install datasets \
 pip install -U numpy pandas
 pip install wandb clearml
 pip install black
+pip install qwen-vl-utils scikit-learn

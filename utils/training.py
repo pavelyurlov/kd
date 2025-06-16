@@ -18,9 +18,13 @@ def train(
     teacher_metrics: dict,
 ):
 
+    teacher_name = config.models.teacher.split("/")[1].split("-")[0]
+    student_name = config.models.student.split("/")[1].split("-")[0]
+    exp_name = f"{teacher_name}_to_{student_name}"
+
     training_args = SFTConfig(
         # Save results
-        output_dir=f"output/sft_{timestamp}",
+        output_dir=f"output/sft_{exp_name}_{timestamp}",
         push_to_hub=False,
         report_to=["wandb"],
         # Training params

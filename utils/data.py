@@ -33,12 +33,19 @@ def dummy_data():
 
 def hf_data(config: DataConfig):
     dataset: Dataset = load_dataset(config.name, split="train")
-    dataset = dataset.filter(
-        lambda x: x["source"] == "gpt4"
-        and not x["is_bad_by_regex"]
-        and x["sonnet_complexity"] != "easy"
-        and x["language"] == "Russian"
-    )
+
+    if config.name == "IlyaGusev/saiga_scored":
+        dataset = dataset.filter(
+            lambda x: x["source"] == "gpt4"
+            and not x["is_bad_by_regex"]
+            and x["language"] == "Russian"
+        )
+
+        if config.sonnet_easy:
+            dataset = dataset.filter(lambda x: x["sonnet_complexity"] == "easy")
+        else:
+            dataset = dataset.filter(lambda x: x["sonnet_complexity"] != "easy")
+
     dataset = dataset.select_columns("messages")
 
     def rename_role(sample: dict):

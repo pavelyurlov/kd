@@ -3,6 +3,7 @@ models:
   teacher: Qwen/Qwen2.5-1.5B-Instruct
 data:
   name: IlyaGusev/saiga_scored
+  sonnet_easy: true
   language: ru
 train:
   epochs: 3

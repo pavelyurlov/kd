@@ -49,8 +49,8 @@ def train(
         # Training params
         num_train_epochs=config.train.epochs,
         per_device_train_batch_size=1,
-        gradient_accumulation_steps=8,
-        learning_rate=2e-4,
+        gradient_accumulation_steps=config.train.accum_steps,
+        learning_rate=config.train.lr,
         bf16=True,
         max_grad_norm=0.3,
         warmup_ratio=0.03,

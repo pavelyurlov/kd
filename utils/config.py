@@ -9,7 +9,7 @@ class ModelConfig(BaseModel):
 class DataConfig(BaseModel):
     name: str
     language: str = "ru"
-    sonnet_easy: bool = False
+    sonnet_easy: bool = True
     dummy: bool = False
     filter: int = 1
 

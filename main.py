@@ -30,11 +30,19 @@ def main(config: Config):
     student_model, student_tokenizer = get_model_and_tokenizer(config.models.student)
 
     teacher_dataset = generate_teacher_outputs(
-        teacher_model, teacher_tokenizer, train_dataset, config.train.inference_batch
+        teacher_model,
+        teacher_tokenizer,
+        train_dataset,
+        config.train.inference_batch,
+        "teacher on train",
     )
 
     eval_teacher = generate_teacher_outputs(
-        teacher_model, teacher_tokenizer, eval_dataset, config.train.inference_batch
+        teacher_model,
+        teacher_tokenizer,
+        eval_dataset,
+        config.train.inference_batch,
+        "teacher on eval",
     )
     teacher_metrics = metrics_between_sets(
         eval_teacher, eval_dataset, config.data.language

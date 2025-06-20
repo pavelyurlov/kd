@@ -66,10 +66,11 @@ def generate_teacher_outputs(
     tokenizer: AutoTokenizer,
     dataset: Dataset,
     batch_size: int,
+    desc: str = "",
 ) -> Dataset:
     teacher_answers: list[str] = []
     idx_range = range(0, len(dataset), batch_size)
-    for i in tqdm(idx_range, desc="Teacher output generation"):
+    for i in tqdm(idx_range, desc=f"Inference: {desc}"):
         samples = dataset[i : i + batch_size]
         outputs = generate_text_from_samples(model, tokenizer, samples)
         teacher_answers.extend(outputs)

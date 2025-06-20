@@ -4,8 +4,27 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from .config import Config
 from .validation import calculate_metrics, preprocess_logits
+from .inference import generate_teacher_outputs
+from .validation import metrics_between_sets
 
 # from peft import LoraConfig
+
+
+def validate_student_manually(
+    model: AutoModelForCausalLM,
+    tokenizer: AutoTokenizer,
+    eval_dataset: Dataset,
+    config: Config,
+    name: str,
+):
+    eval_student = generate_teacher_outputs(
+        model, tokenizer, eval_dataset, config.train.inference_batch, "student on eval"
+    )
+    student_metrics = metrics_between_sets(
+        eval_student, eval_dataset, config.data.language
+    )
+    student_metrics = {f"eval_{name}_{k}": v for k, v in student_metrics.items()}
+    return student_metrics
 
 
 def train(
@@ -58,4 +77,14 @@ def train(
 
     trainer.log(teacher_metrics)
 
+    student_metrics_before = validate_student_manually(
+        model, tokenizer, eval_dataset, config, "student"
+    )
+    trainer.log(student_metrics_before)
+
     trainer.train()
+
+    student_metrics_after = validate_student_manually(
+        model, tokenizer, eval_dataset, config, "student"
+    )
+    trainer.log(student_metrics_after)

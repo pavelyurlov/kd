@@ -16,7 +16,7 @@ class DataConfig(BaseModel):
 
 class TrainConfig(BaseModel):
     epochs: int = 4
-    inference_batch: int = 512
+    inference_batch: int = 256
     lr: float = 3e-6
     accum_steps: int = 4
 
